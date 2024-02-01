@@ -35,6 +35,8 @@ constexpr auto PICO_URL = "https://unpkg.com/@picocss/pico@1.5.11/css/pico.min.c
 constexpr auto HTMX_URL = "https://unpkg.com/htmx.org@1.9.10";
 constexpr auto HTMX_INTEGRITY = "sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC";
 constexpr auto SHORTCUT_ICON = "https://www.svgrepo.com/show/46184/frog.svg";
+// constexpr auto SWEET_ALERT_URL = "https://unpkg.com/sweetalert/dist/sweetalert.min.js";
+constexpr auto SWEET_ALERT2_URL = "https://cdn.jsdelivr.net/npm/sweetalert2@11";
 
 using namespace Webxx;
 using namespace Qt::StringLiterals;
@@ -46,8 +48,8 @@ struct Main : component<Main> {
                 { _class { { "container" } } },
                 nav {
                     { htmx::_hxBoost {} },
-                    a { { _href { "/" } }, "Home" },
-                    a { { _href { "/treasuries" } }, "Treasuries" },
+                    a { { _href { "/" }, _hxSelect { "#content" }, _hxTarget { "#content" } }, "Home" },
+                    a { { _href { "/treasuries" }, _hxSelect { "#content" }, _hxTarget { "#content" } }, "Treasuries" },
                 },
                 hr {},
                 dv {
@@ -71,19 +73,51 @@ struct Layout : component<Layout> {
                         style {
                             { "tbody button", { marginBottom { "0" } } },
                             { "td form", display { "none" } } },
-
                         styleTarget {},
                         headTarget {},
                         Webxx::script {
                             { _src { HTMX_URL }, _integrity { HTMX_INTEGRITY }, _crossorigin { "anonymous" } },
                         },
-                        script { R"(htmx.on("htmx:responseError", function (evt) {
-                                console.log("listening for htmx:responseError : ", evt.detail.xhr);
+                        Webxx::script {
+                            { _src { SWEET_ALERT2_URL } },
+                        },
+                        script { R"(
+                            htmx.config.useTemplateFragments = true;
+                            htmx.on("htmx:responseError", function (evt) {
+                                console.log("htmx:responseError : ", evt.detail.xhr);
                                 let error = evt.detail.xhr.responseText;
                                 if (error) {
-                                    alert(error);
+                                    SwalError(error);
                                 }
-                            });)" },
+                            });
+                            /*
+                            document.addEventListener("htmx:confirm", function(e) {
+                                e.preventDefault();
+                                console.log("in htmx:confirm");
+                                if (!e.target.hasAttribute('hx-confirm')) {
+                                    e.detail.issueRequest(true);
+                                    return;
+                                }
+                                Swal.fire({
+                                    title: "Confirm?",
+                                    text: `${e.detail.question}`,
+                                    icon: "warning",
+                                    showCancelButton: true,
+                                    confirmButtonText: "Yes",
+                                    cancelButtonText: "No",
+                                    reverseButtons: true
+                                }).then(function(result) {
+                                    if(result.isConfirmed) e.detail.issueRequest(true); // use true to skip window.confirm
+                                });
+                            });
+                            */
+                            function SwalSuccess(text, title = "Success") {
+                                Swal.fire({title:title,text:text,icon:"success",allowOutsideClick:false});
+                            }
+                            function SwalError(text, title = "Error") {
+                                Swal.fire({title:title,text:text,icon:"error",allowOutsideClick:false});
+                            }
+                            )" },
                     },
                     body {
                         std::move(mainComp),
@@ -107,12 +141,10 @@ struct Home : component<Home> {
                             htmx::_hxResetAfterSuccess {},
                         },
                         input {
-                            { _type { "search" }, _name { "cusip" }, _placeholder { "CUSIP" } },
-                        },
+                            { _type { "search" }, _name { "cusip" }, _placeholder { "CUSIP" } } },
                     },
                     dv {
-                        { _id { "result" } },
-                    } } }
+                        { _id { "result" } } } } }
         }
     {
     }
@@ -133,8 +165,15 @@ struct Treasuries : component<Treasuries> {
                             th { "Day/Month Term" },
                             th {} },
                         tbody {
+                            {
+                                _hxConfirm { "Are you sure?" },
+                                _hxTarget { "closest tr" },
+                                htmx::_hxSwap { htmx::Swap::Delete },
+                                _hxOnAfterRequest { "SwalSuccess('UST Deleted','Confirmation')" },
+                            },
                             loop(treasuries, [](const arche::data::Ust& ust, [[maybe_unused]] const Loop& loop) {
                                 return tr {
+                                    { _id { u"row_%1"_s.arg(loop.index).toStdString() } },
                                     td {
                                         ust.cusip.toStdString() },
                                     td {
@@ -143,18 +182,8 @@ struct Treasuries : component<Treasuries> {
                                     td { ust.securityTermWeekYear.toStdString() },
                                     td { ust.securityTermDayMonth.toStdString() },
                                     td {
-                                        form {
-                                            {
-                                                _id { u"form_%1"_s.arg(loop.index).toStdString() },
-                                                _hxDelete { "/treasuries" },
-                                                _hxTarget { "body" },
-                                                _hxConfirm { "Are you sure?" },
-                                            },
-                                            input {
-                                                { _type { "hidden" }, _name { "id" }, _value { std::to_string(ust.id) } },
-                                            } },
                                         button {
-                                            { _form { u"form_%1"_s.arg(loop.index).toStdString() }, _type { "submit" } },
+                                            { _hxDelete { u"/treasuries/%1"_s.arg(loop.index).toStdString() } },
                                             "Delete" } },
                                 };
                             }) },

@@ -30,10 +30,10 @@ using namespace Webxx::internal;
 using namespace Qt::StringLiterals;
 
 // NOLINTBEGIN(*-avoid-c-arrays, *-pro-bounds-array-to-pointer-decay, *-no-array-decay)
-QHttpServerResponse& hxRedirect(QHttpServerResponse& resp, QByteArray&& path)
+QHttpServerResponse&& hxRedirect(QHttpServerResponse&& resp, QByteArray&& path)
 {
     resp.addHeader("HX-Redirect", std::move(path));
-    return resp;
+    return std::move(resp);
 }
 
 bool isHxRequest(const QHttpServerRequest& req)
@@ -52,8 +52,23 @@ _hxBoost::_hxBoost(bool status)
 {
 }
 
+_hxOn::_hxOn(QLatin1StringView event, QLatin1StringView js)
+    : Webxx::internal::HtmlAttribute { "hx-on::%1"_L1.arg(event).toLatin1(), { js.latin1() } }
+{
+}
+
+_hxOnAfterRequest::_hxOnAfterRequest(QLatin1StringView js)
+    : Webxx::internal::HtmlAttribute { "hx-on::after-request", { js.latin1() } }
+{
+}
+
 _hxResetAfterSuccess::_hxResetAfterSuccess()
     : Webxx::internal::HtmlAttribute { "hx-on::after-request", { "if(event.detail.successful) this.reset()" } }
+{
+}
+
+_hxOnAfterSwap::_hxOnAfterSwap(QLatin1StringView js)
+    : Webxx::internal::HtmlAttribute { "hx-on::after-swap", { js.latin1() } }
 {
 }
 

@@ -29,7 +29,7 @@ enum class Swap {
     None,
 };
 
-QHttpServerResponse& hxRedirect(QHttpServerResponse& resp, QByteArray&& path);
+QHttpServerResponse&& hxRedirect(QHttpServerResponse&& resp, QByteArray&& path);
 bool isHxRequest(const QHttpServerRequest& req);
 
 struct _hxSwap : Webxx::internal::HtmlAttribute {
@@ -40,8 +40,20 @@ struct _hxBoost : Webxx::internal::HtmlAttribute {
     explicit _hxBoost(bool status = true);
 };
 
+struct _hxOn : Webxx::internal::HtmlAttribute {
+    explicit _hxOn(QLatin1StringView event, QLatin1StringView js);
+};
+
+struct _hxOnAfterRequest : Webxx::internal::HtmlAttribute {
+    explicit _hxOnAfterRequest(QLatin1StringView js);
+};
+
 struct _hxResetAfterSuccess : Webxx::internal::HtmlAttribute {
     explicit _hxResetAfterSuccess();
+};
+
+struct _hxOnAfterSwap : Webxx::internal::HtmlAttribute {
+    explicit _hxOnAfterSwap(QLatin1StringView js);
 };
 
 }
@@ -51,8 +63,12 @@ namespace Webxx {
 // clang-format off
 WEBXX_HTML_ATTR_ALIAS(hx-post, hxPost);
 WEBXX_HTML_ATTR_ALIAS(hx-delete, hxDelete);
+WEBXX_HTML_ATTR_ALIAS(hx-trigger, hxTrigger);
 WEBXX_HTML_ATTR_ALIAS(hx-target, hxTarget);
 WEBXX_HTML_ATTR_ALIAS(hx-confirm, hxConfirm);
+WEBXX_HTML_ATTR_ALIAS(hx-select, hxSelect);
+WEBXX_HTML_ATTR_ALIAS(hx-on-htmx-before-request, hxOnBeforeRequest);
+WEBXX_HTML_ATTR_ALIAS(hx-on-htmx-after-request, hxOnAfterRequest);
 // clang-format on
 // @formatter:on
 }
