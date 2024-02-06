@@ -173,7 +173,6 @@ struct Treasuries : component<Treasuries> {
                             },
                             loop(treasuries, [](const arche::data::Ust& ust, [[maybe_unused]] const Loop& loop) {
                                 return tr {
-                                    { _id { u"row_%1"_s.arg(loop.index).toStdString() } },
                                     td {
                                         ust.cusip.toStdString() },
                                     td {
@@ -183,7 +182,7 @@ struct Treasuries : component<Treasuries> {
                                     td { ust.securityTermDayMonth.toStdString() },
                                     td {
                                         button {
-                                            { _hxDelete { u"/treasuries/%1"_s.arg(loop.index).toStdString() } },
+                                            { _hxDelete { u"/treasuries/%1"_s.arg(ust.id).toStdString() } },
                                             "Delete" } },
                                 };
                             }) },

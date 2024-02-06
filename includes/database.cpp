@@ -51,9 +51,13 @@ QList<arche::data::Ust> arche::data::listUst()
 
 QSqlError arche::data::deleteUST(int id)
 {
-    QSqlQuery query(u"DELETE from ust where id = %1"_s.arg(id));
+    QSqlQuery query;
+    query.prepare(u"DELETE from ust where id = ?"_s);
+    query.bindValue(0, id);
     if (!query.exec()) {
         return query.lastError();
+    } else if (query.numRowsAffected() < 1) {
+        return QSqlError { QString {}, u"id %1 not found"_s.arg(id) };
     }
     return {};
 }
