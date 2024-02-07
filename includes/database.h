@@ -1,6 +1,8 @@
 #include <QJsonObject>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <expected>
+#include <vector>
 
 #pragma once
 
@@ -21,6 +23,6 @@ struct Ust {
 
 [[nodiscard]] QSqlError deleteUST(int id);
 
-QList<Ust> listUst();
+std::vector<Ust> listUst();
 
 }

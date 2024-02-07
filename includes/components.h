@@ -151,7 +151,7 @@ struct Home : component<Home> {
 };
 
 struct Treasuries : component<Treasuries> {
-    Treasuries(const QList<arche::data::Ust>& treasuries)
+    explicit Treasuries(const std::vector<arche::data::Ust>& treasuries)
         : component<Treasuries> {
             Main {
                 fragment {
@@ -171,7 +171,7 @@ struct Treasuries : component<Treasuries> {
                                 htmx::_hxSwap { htmx::Swap::Delete },
                                 _hxOnAfterRequest { "SwalSuccess('UST Deleted','Confirmation')" },
                             },
-                            loop(treasuries, [](const arche::data::Ust& ust, [[maybe_unused]] const Loop& loop) {
+                            loop(treasuries, [](const arche::data::Ust& ust, [[maybe_unused]] Loop loop) {
                                 return tr {
                                     td {
                                         ust.cusip.toStdString() },
@@ -193,7 +193,7 @@ struct Treasuries : component<Treasuries> {
 };
 
 struct SearchResults : component<SearchResults> {
-    SearchResults(const QJsonArray& arr)
+    explicit SearchResults(const std::vector<QVariant>& arr)
         : component<SearchResults> {
             fragment {
                 table {
@@ -205,22 +205,22 @@ struct SearchResults : component<SearchResults> {
                         th { "Day/Month Term" },
                         th {} },
                     tbody {
-                        loop(arr, [](QJsonValue&& v, [[maybe_unused]] const Loop& loop) {
+                        loop(arr, [](const QVariant& v, [[maybe_unused]] Loop loop) {
                             return tr {
                                 td {
                                     form {
                                         { _id { u"form_%1"_s.arg(loop.index).toStdString() }, _hxPost { "/" }, htmx::_hxSwap { htmx::Swap::None } },
                                         input {
-                                            { _type { "hidden" }, _name { "cusip" }, _value { v[u"cusip"_s].toString().toStdString() } },
+                                            { _type { "hidden" }, _name { "cusip" }, _value { v.toJsonObject()[u"cusip"_s].toString().toStdString() } },
                                         },
                                     },
-                                    v[u"cusip"_s].toString().toStdString() },
+                                    v.toJsonObject()[u"cusip"_s].toString().toStdString() },
                                 td {
-                                    input { { _form { u"form_%1"_s.arg(loop.index).toStdString() }, _type { "hidden" }, _name { "issueDate" }, _value { v[u"issueDate"_s].toString().toStdString() } } },
-                                    v[u"issueDate"_s].toString().toStdString() },
-                                td { v[u"maturityDate"_s].toString().toStdString() },
-                                td { v[u"securityTermWeekYear"_s].toString().toStdString() },
-                                td { v[u"securityTermDayMonth"_s].toString().toStdString() },
+                                    input { { _form { u"form_%1"_s.arg(loop.index).toStdString() }, _type { "hidden" }, _name { "issueDate" }, _value { v.toJsonObject()[u"issueDate"_s].toString().toStdString() } } },
+                                    v.toJsonObject()[u"issueDate"_s].toString().toStdString() },
+                                td { v.toJsonObject()[u"maturityDate"_s].toString().toStdString() },
+                                td { v.toJsonObject()[u"securityTermWeekYear"_s].toString().toStdString() },
+                                td { v.toJsonObject()[u"securityTermDayMonth"_s].toString().toStdString() },
                                 td { button { { _form { u"form_%1"_s.arg(loop.index).toStdString() }, _type { "submit" } }, "Save" } }
                             };
                         }) } } },

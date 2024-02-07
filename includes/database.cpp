@@ -30,10 +30,14 @@ QSqlError arche::data::saveUST(const QJsonObject& obj)
     return {};
 }
 
-QList<arche::data::Ust> arche::data::listUst()
+std::vector<arche::data::Ust> arche::data::listUst()
 {
-    QList<Ust> list;
     QSqlQuery query(u"SELECT * FROM ust"_s);
+    std::vector<Ust> list;
+    if (!query.exec()) {
+        qDebug() << "listUst query error: " << query.lastError();
+        return list;
+    }
     while (query.next()) {
         Ust ust;
         ust.id = query.value(u"id"_s).toInt();
@@ -44,7 +48,7 @@ QList<arche::data::Ust> arche::data::listUst()
         ust.highInvestmentRate = query.value(u"highInvestmentRate"_s).toDouble();
         ust.securityTermDayMonth = query.value(u"securityTermDayMonth"_s).toString();
         ust.securityTermWeekYear = query.value(u"securityTermWeekYear"_s).toString();
-        list.append(ust);
+        list.push_back(ust);
     }
     return list;
 }
@@ -56,7 +60,8 @@ QSqlError arche::data::deleteUST(int id)
     query.bindValue(0, id);
     if (!query.exec()) {
         return query.lastError();
-    } else if (query.numRowsAffected() < 1) {
+    }
+    if (query.numRowsAffected() < 1) {
         return QSqlError { QString {}, u"id %1 not found"_s.arg(id) };
     }
     return {};

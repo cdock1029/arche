@@ -33,7 +33,7 @@ Routes::Routes(QHttpServer& server, QObject* parent)
     });
 
     server.route(u"/"_s, Method::Post, [this](const QHttpServerRequest& req, QHttpServerResponder&& responder) {
-        QUrlQuery q { QString::fromLatin1(req.body()) };
+        const QUrlQuery q { QString::fromLatin1(req.body()) };
 
         auto cusip = q.queryItemValue(u"cusip"_s);
         auto issueDate = QDate::fromString(q.queryItemValue(u"issueDate"_s, QUrl::FullyDecoded), Qt::ISODate);
@@ -41,11 +41,11 @@ Routes::Routes(QHttpServer& server, QObject* parent)
         auto url = TD_SECURITY_URL.arg(cusip, issueDate.toString(u"MM/dd/yyyy"_s));
         auto* reply = m_manager->get(QNetworkRequest { url });
 
-        connect(reply, &QNetworkReply::finished, [reply, responder = std::move(responder)]() {
+        connect(reply, &QNetworkReply::finished, [reply, responder = std::move(responder)] mutable {
             reply->deleteLater();
             const auto obj = QJsonDocument::fromJson(reply->readAll()).object();
             if (obj.isEmpty()) {
-                const_cast<QHttpServerResponder&>(responder).sendResponse({ QHttpServerResponse::StatusCode::NotFound });
+                responder.sendResponse({ QHttpServerResponse::StatusCode::NotFound });
                 return;
             }
             auto err = arche::data::saveUST(obj);
@@ -53,21 +53,13 @@ Routes::Routes(QHttpServer& server, QObject* parent)
                 qDebug() << "saveUST err:" << err;
                 if ((err.nativeErrorCode() == PRIMARY_KEY_ERROR || err.nativeErrorCode() == UNIQUE_CONSTRAINT_ERROR)) {
                     qDebug() << "caught unique error";
-                    const_cast<QHttpServerResponder&>(responder).sendResponse({ TEXT_PLAIN,
+                    responder.sendResponse({ TEXT_PLAIN,
                         "UST already saved"_ba, QHttpServerResponse::StatusCode::Conflict });
                     return;
                 }
             }
-            const_cast<QHttpServerResponder&>(responder).sendResponse(hxRedirect({ TEXT_PLAIN, QByteArray {}, QHttpServerResponse::StatusCode::Created }, "/treasuries"));
+            responder.sendResponse(hxRedirect({ TEXT_PLAIN, QByteArray {}, QHttpServerResponse::StatusCode::Created }, "/treasuries"));
         });
-    });
-
-    server.route(u"/test"_s, Method::Post, []() {
-        return QHttpServerResponse { TEXT_PLAIN, "Post result" };
-    });
-    server.route(u"/test"_s, Method::Delete, []() {
-        // return QHttpServerResponse { TEXT_PLAIN, "Delete result" };
-        return QHttpServerResponse { QHttpServerResponse::StatusCode::Ok };
     });
 
     server.route(u"/treasuries"_s, Method::Get, [](const QHttpServerRequest& req) -> QHttpServerResponse {
@@ -78,18 +70,17 @@ Routes::Routes(QHttpServer& server, QObject* parent)
         return { TEXT_HTML, comp.data() };
     });
 
-    server.route(u"/treasuries/<arg>"_s, Method::Delete, [](int id, QHttpServerResponder&& responder) {
+    server.route(u"/treasuries/<arg>"_s, Method::Delete, [](int id) -> QHttpServerResponse {
         auto err = arche::data::deleteUST(id);
         if (err.isValid()) {
             qDebug() << "deleteUST for id " << id << " err:" << err.text();
-            const_cast<QHttpServerResponder&>(responder).sendResponse({ QHttpServerResponse::StatusCode::InternalServerError });
-            return;
+            return { QHttpServerResponse::StatusCode::InternalServerError };
         }
-        const_cast<QHttpServerResponder&>(responder).sendResponse({ QHttpServerResponse::StatusCode::Ok });
+        return { QHttpServerResponse::StatusCode::Ok };
     });
 
     server.route(u"/search"_s, Method::Post, [this](const QHttpServerRequest& req, QHttpServerResponder&& responder) {
-        QUrlQuery q { QString::fromLatin1(req.body()) };
+        const QUrlQuery q { QString::fromLatin1(req.body()) };
         auto cusip = q.queryItemValue(u"cusip"_s).trimmed();
         if (cusip.isEmpty()) {
             responder.sendResponse({ QHttpServerResponse::StatusCode::BadRequest });
@@ -98,11 +89,11 @@ Routes::Routes(QHttpServer& server, QObject* parent)
         auto url = TD_SEARCH_URL.arg(cusip);
         auto* reply = m_manager->get(QNetworkRequest { url });
 
-        connect(reply, &QNetworkReply::finished, [reply, responder = std::move(responder)]() {
+        connect(reply, &QNetworkReply::finished, [reply, responder = std::move(responder)] mutable {
             reply->deleteLater();
-            const auto arr = QJsonDocument::fromJson(reply->readAll()).array();
-            const_cast<QHttpServerResponder&>(responder).sendResponse({ TEXT_HTML,
-                render(components::Layout { components::SearchResults { arr } }).data() });
+            const auto vl = QJsonDocument::fromJson(reply->readAll()).array().toVariantList();
+            const std::vector<QVariant> arr { vl.constBegin(), vl.constEnd() };
+            responder.sendResponse({ TEXT_HTML, render(components::Layout { components::SearchResults { arr } }).data() });
         });
     });
 }
